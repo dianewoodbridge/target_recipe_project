@@ -1,8 +1,9 @@
+
 import pandas as pd 
 import numpy as np
 import string
 import re
-import os
+import ast
 
 def preprocess(string_list):
     # Lowercase product titles
@@ -25,6 +26,34 @@ def preprocess(string_list):
 def preprocess_df(group10):
     # Remove all rows that do not have product title
     group10 = group10[~pd.isnull(group10['title'])].copy()
+
+    columns = group10.columns
+    if 'images' in  columns:
+        # Change strings to lists
+        group10['images'] = [ast.literal_eval(image_list) 
+                        if not pd.isnull(image_list) 
+                        else np.nan 
+                        for image_list in group10['images']]
+    if 'highlights' in columns:
+        group10['highlights'] = [ast.literal_eval(image_list) 
+                            if not pd.isnull(image_list) 
+                            else np.nan 
+                            for image_list in group10['highlights']]
+    if 'specifications' in columns:
+        group10['specifications'] = [ast.literal_eval(image_list) 
+                            if not pd.isnull(image_list) 
+                            else np.nan 
+                            for image_list in group10['specifications']]
+    if 'serving_info' in columns:
+        group10['serving_info'] = [ast.literal_eval(image_list) 
+                            if not pd.isnull(image_list) 
+                            else np.nan 
+                            for image_list in group10['serving_info']]
+    if 'nutrition_info' in columns:
+        group10['nutrition_info'] = [ast.literal_eval(image_list) 
+                            if not pd.isnull(image_list) 
+                            else np.nan 
+                            for image_list in group10['nutrition_info']]
 
     # Preprocess product titles
     group10['title_modified'] = preprocess(group10['title'])
