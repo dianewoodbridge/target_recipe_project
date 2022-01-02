@@ -9,6 +9,9 @@ def preprocess(string_list):
     # Lowercase product titles
     string_list = [string.lower() for string in string_list]
     
+    r = r'-'
+    string_list = [re.sub(r, ' ', string) for string in string_list]
+    
     # Remove qty information from product titles
     replace_expr = r'[0-9]+(.)?([0-9]+)?[\s]*(cans|can|boxes|box|bottles|bottle|\
                                               gallons|gallon|fl oz|oz|fl|gal|pk|\
