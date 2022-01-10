@@ -100,20 +100,24 @@ class Qty_normal_map:
                     rec = row.req_oz/row.package_weight
                     recommended_qty.append(np.ceil(rec))
                     product_qty.append(row.package_weight)
+                else:
+                    recommended_qty.append(0)
+                    product_qty.append(0)
             else :
                 if row.normalized_unit == '':
                     if row.net_content_quantity_unit_of_measure.strip().lower() =='dozen':
                         rec = row.quantity/12
                         recommended_qty.append(np.ceil(rec))
                         product_qty.append(12)
-                    if row.net_content_quantity_unit_of_measure.strip().lower() =='count':
+                    elif row.net_content_quantity_unit_of_measure.strip().lower() =='count':
                         rec = row.quantity
                         recommended_qty.append(np.ceil(rec))
                         product_qty.append(row.package_weight)
                         product_qty.append(1)
-
+                    else:
+                        recommended_qty.append(0)
+                        product_qty.append(0)
                 else:    
-
                     recommended_qty.append(0)
                     product_qty.append(0)
         join_df['product_qty_oz_ct'] = product_qty
