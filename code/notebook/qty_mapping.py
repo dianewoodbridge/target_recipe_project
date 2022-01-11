@@ -83,14 +83,21 @@ class Qty_normal_map:
         return df
     
     
-
-    def recommended_quantity(self, join_df):
+    def recommended_quantity(self, df):
         recommended_qty=[]
         product_qty=[]
-        join_df['package_weight']=join_df['package_weight'].apply(float)
-        join_df['net_content_quantity_value']=join_df['net_content_quantity_value'].apply(float)
-        for index, row in join_df.iterrows():
-            if row.req_oz > 0 :
+        a=[]
+        df['package_weight']=df['package_weight'].apply(float)
+        df['net_content_quantity_value']=df['net_content_quantity_value'].apply(float)
+        for index, row in df.iterrows():
+            if row.normalized_unit == '':
+                recommended_qty.append(1)
+                a.append(3)
+                product_qty.append(row.package_weight)
+                
+                
+            elif row.req_oz > 0 :
+                a.append(1)
                 if row.package_weight_unit_of_measure.strip().lower() =='pound':
                     pack_oz = row.package_weight * 16
                     rec = row.req_oz/pack_oz
@@ -100,26 +107,25 @@ class Qty_normal_map:
                     rec = row.req_oz/row.package_weight
                     recommended_qty.append(np.ceil(rec))
                     product_qty.append(row.package_weight)
-                else:
-                    recommended_qty.append(0)
-                    product_qty.append(0)
-            else :
-                if row.normalized_unit == '':
-                    if row.net_content_quantity_unit_of_measure.strip().lower() =='dozen':
-                        rec = row.quantity/12
-                        recommended_qty.append(np.ceil(rec))
-                        product_qty.append(12)
-                    elif row.net_content_quantity_unit_of_measure.strip().lower() =='count':
-                        rec = row.quantity
-                        recommended_qty.append(np.ceil(rec))
-                        product_qty.append(row.package_weight)
-                        product_qty.append(1)
-                    else:
-                        recommended_qty.append(0)
-                        product_qty.append(0)
+            else:
+                a.append(2)
+                if row.net_content_quantity_unit_of_measure.strip().lower() =='dozen':
+                    rec = row.quantity/(12*row.net_content_quantity_value)
+                    recommended_qty.append(np.ceil(rec))
+                    product_qty.append(12*row.net_content_quantity_value)
+                elif row.net_content_quantity_unit_of_measure.strip().lower() =='count':
+                    rec = row.quantity
+                    recommended_qty.append(np.ceil(rec))
+                    product_qty.append(row.package_weight)
+                elif row.net_content_quantity_unit_of_measure.strip().lower() =='each':
+                    rec = row.quantity
+                    recommended_qty.append(np.ceil(rec))
+                    product_qty.append(row.package_weight)
                 else:    
                     recommended_qty.append(0)
                     product_qty.append(0)
-        join_df['product_qty_oz_ct'] = product_qty
-        join_df['recommended_qty'] = recommended_qty
-        return join_df
+        print(recommended_qty)
+        df['product_qty_oz_ct'] = product_qty
+        df['recommended_qty'] = recommended_qty
+        df['a'] = a
+        return df
