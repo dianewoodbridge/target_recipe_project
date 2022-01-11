@@ -86,18 +86,17 @@ class Qty_normal_map:
     def recommended_quantity(self, df):
         recommended_qty=[]
         product_qty=[]
-        a=[]
+
         df['package_weight']=df['package_weight'].apply(float)
         df['net_content_quantity_value']=df['net_content_quantity_value'].apply(float)
         for index, row in df.iterrows():
             if row.normalized_unit == '':
                 recommended_qty.append(1)
-                a.append(3)
                 product_qty.append(row.package_weight)
                 
                 
             elif row.req_oz > 0 :
-                a.append(1)
+
                 if row.package_weight_unit_of_measure.strip().lower() =='pound':
                     pack_oz = row.package_weight * 16
                     rec = row.req_oz/pack_oz
@@ -108,7 +107,7 @@ class Qty_normal_map:
                     recommended_qty.append(np.ceil(rec))
                     product_qty.append(row.package_weight)
             else:
-                a.append(2)
+ 
                 if row.net_content_quantity_unit_of_measure.strip().lower() =='dozen':
                     rec = row.quantity/(12*row.net_content_quantity_value)
                     recommended_qty.append(np.ceil(rec))
@@ -127,5 +126,5 @@ class Qty_normal_map:
         print(recommended_qty)
         df['product_qty_oz_ct'] = product_qty
         df['recommended_qty'] = recommended_qty
-        df['a'] = a
+ 
         return df
