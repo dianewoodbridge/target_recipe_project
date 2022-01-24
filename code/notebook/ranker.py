@@ -1,10 +1,11 @@
 from sentence_transformers import util
 
 class TransformerRanker:
-    def __init__(self, model, product_ids, max_rank=100):
+    def __init__(self, model, product_ids, max_rank=100,  clf=None):
         self.model = model
         self.max_rank = max_rank
         self.product_ids = product_ids
+        self.clf = clf
     
     def fit(self, documents):
         self.embeddings = self.model.encode(documents, 
@@ -19,11 +20,15 @@ class TransformerRanker:
 
         ingredient_embedding = self.model.encode(ingredient, convert_to_tensor=True)
         scores = util.pytorch_cos_sim(ingredient_embedding, self.embeddings)[0]
-        product_score = dict(zip(self.product_ids, scores.numpy()))
-        product_score = sorted(product_score.items(), 
+        product_scores = dict(zip(self.product_ids, scores.numpy()))
+        product_scores = sorted(product_scores.items(), 
                                 key = lambda x: x[1], 
-                                reverse=True)
-        return product_score[0:max_rank]
+                                reverse=True)[0:100]
+        if self.clf:
+            tcin_list =  [product_score[0] for product_score in product_scores]
+            tcin_list = self.clf.filter_by_class(ingredient, tcin_list)
+            product_scores = [product_score for product_score in product_scores if product_score[0] in tcin_list]
+        return product_scores[0:max_rank]
         
     def get_scores_recipe(self, ingredient_list, max_rank=None):
         recipe_scores = []
@@ -71,7 +76,8 @@ class TransformerRanker:
 
 
 class CrossEncoderRanker(TransformerRanker):
-    def __init__(self, bi_model, cross_model, tcin_sentence_map, cross_rank=10, bi_rank=50):
+    def __init__(self, bi_model, cross_model, tcin_sentence_map, cross_rank=10, 
+                 bi_rank=50):
         self.bi_model = bi_model
         self.cross_model = cross_model
         self.cross_rank = cross_rank
@@ -147,3 +153,41 @@ class FastRanker:
         recipe_scores = self.get_scores_recipe(ingredient_list, max_rank)
         return [[product_score[0] for product_score in product_scores] 
                 for product_scores in recipe_scores]
+
+class LabelEncoderWithNA():
+    def fit(self, train, col):
+        train[col] = train[col].astype('category').cat.as_ordered()
+        self.encoder = train[col].cat.categories
+    def transform(self, val, col):
+        val[col] = pd.Categorical(val[col], categories=self.encoder, ordered=True)
+        val[col] = val[col].cat.codes
+    def fit_transform(self, train, col):
+        self.fit(train, col)
+        self.transform(train, col)
+
+class Classifier():
+    def __init__(self, model, pm, hier_column, threshold=8.9):
+        self.hier_column = hier_column
+        self.model = model
+        self.pm = pm
+        self.threshold=threshold
+        self.le = LabelEncoderWithNA()
+        self.le.fit_transform(self.pm.df.copy(), self.hier_column)
+
+    def predict(self, x):
+        return self.model.predict(x)
+
+    def filter_by_class(self, ingredient, tcin_list):
+        class_list = self.pm.get_column_list(tcin_list, 'class_name')
+        scores = self.model.predict([ingredient])
+        n = 1
+        labels = [(self.le.encoder[score_argmax], score_max)
+          for score_argmax, score_max 
+          in zip(scores.argsort()[-n:][::-1], sorted(scores, reverse=True)[0:n])]
+        if labels[0][1] > self.threshold:
+           idx = [i for i, class_name in enumerate(class_list) if class_name == labels[0][0]]
+           tcin_list = [tcin_list[i] for i in idx]
+           print(f'Filtered {ingredient} for {self.hier_column}: {labels[0][0]}')
+        return tcin_list
+
+

@@ -1,3 +1,4 @@
+from itertools import product
 from preprocessor import *
 import matplotlib.pyplot as plt
 
@@ -12,7 +13,9 @@ class DisplayProducts():
     
     def display_products_ingredient(self, ingredient, n=3):
         preprocessed_ingredient = preprocess([ingredient])
-        tcin_list = self.ranker.rank_products_ingredient(preprocessed_ingredient, max_rank=n)
+        product_scores = self.ranker.get_scores_ingredient(preprocessed_ingredient, max_rank=n)
+        tcin_list = [product_score[0] for product_score in product_scores]
+        scores_list = [product_score[1] for product_score in product_scores]
         n_tcin = len(tcin_list)
         images = self.mapper.get_image_list(tcin_list)
         titles = self.mapper.get_title_list(tcin_list)
@@ -24,7 +27,7 @@ class DisplayProducts():
         for i in range(n_tcin):
             plt.subplot(int(n_tcin / columns) + 1, columns, i + 1)
             plt.axis('off')
-            plt.title(titles[i])
+            plt.title(f'{titles[i]} ({scores_list[i]:.4f})')
             if not isinstance(images[i], float):
                 plt.imshow(images[i])
         plt.show()

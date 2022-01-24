@@ -36,3 +36,9 @@ class Mapper():
     
     def get_title_list(self, tcin_list):
         return [self.get_title(tcin) for tcin in tcin_list]
+
+    def get_column_value(self, tcin, column): 
+        return self.df[self.df['tcin'] == tcin][column].iloc[0]
+    
+    def get_column_list(self, tcin_list, column):
+        return [self.get_column_value(tcin, column) for tcin in tcin_list]        
