@@ -91,7 +91,10 @@ class CrossEncoderRanker(TransformerRanker):
             ingredient = ingredient[0]
         tcins = self.bi_model.rank_products_ingredient(ingredient, max_rank=self.bi_rank)
         sentences = []
+        print (tcins)
         for tcin in tcins:
+            
+#             print (sentences)
             sentences.append(self.mapper[self.mapper['tcin'] == tcin]['sentence'].values[0])
         pairs = [(ingredient, sentence.lower()) for sentence in sentences]
         scores = self.cross_model.predict(pairs)
