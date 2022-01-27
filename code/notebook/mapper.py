@@ -11,9 +11,16 @@ class Mapper():
         url = self.df[self.df['tcin'] == tcin]['image'].iloc[0]
         img = np.nan
         if not isinstance(url, float):
-            response = requests.get(url)
-            img = Image.open(BytesIO(response.content))
+            img = self.get_image_url(url)
         return img
+
+    def get_image_url(self, url):
+        response = requests.get(url)
+        img = Image.open(BytesIO(response.content))
+        return img
+
+    def get_images_urls(self, urls):
+        return [self.get_image_url(url) for url in urls]
     
     def get_image_list(self, tcin_list):
         return [self.get_image(tcin) for tcin in tcin_list]
