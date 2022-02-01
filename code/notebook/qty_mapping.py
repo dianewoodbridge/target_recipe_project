@@ -1,7 +1,7 @@
 import pandas as pd 
 import numpy as np
 import re
-
+from preprocessor import *
 
 class Qty_normal_map:
     def __init__(self, unit_abbreviation, op_file_path):
@@ -82,13 +82,24 @@ class Qty_normal_map:
         df['req_oz']=np.round(df['req_oz'], 3)
         return df
     
+    def read_count_to_weight(self):
+        df = pd.read_csv('../../data/count_to_weight.csv')
+        df['Weight']=df['Imperial'].apply(lambda x: float(x.split(' ')[0]))
+        df['Unit']=df['Imperial'].apply(lambda x: x.split(' ')[1])
+        df['Ingredient']=df['Ingredient'].apply(lambda x: x.strip())
+        return df
     
     def recommended_quantity(self, df):
         recommended_qty=[]
         product_qty=[]
-
+        
+        
         df['package_weight']=df['package_weight'].apply(float)
         df['net_content_quantity_value']=df['net_content_quantity_value'].apply(float)
+        
+        df_count_to_weight = self.read_count_to_weight()
+        list_ing = preprocess(df_count_to_weight['Ingredient'].tolist())
+        
         for index, row in df.iterrows():
             if row.normalized_unit == '':
                 recommended_qty.append(1)
@@ -97,32 +108,52 @@ class Qty_normal_map:
                 
             elif row.req_oz > 0 :
 
-                if row.package_weight_unit_of_measure.strip().lower() =='pound':
+                if re.search('pound', row.package_weight_unit_of_measure, flags=re.I):
                     pack_oz = row.package_weight * 16
                     rec = row.req_oz/pack_oz
                     recommended_qty.append(np.ceil(rec))
                     product_qty.append(pack_oz)
-                elif row.package_weight_unit_of_measure.strip().lower() =='ounce':
+                elif re.search('ounce', row.package_weight_unit_of_measure, flags=re.I):
                     rec = row.req_oz/row.package_weight
                     recommended_qty.append(np.ceil(rec))
                     product_qty.append(row.package_weight)
             else:
- 
-                if row.net_content_quantity_unit_of_measure.strip().lower() =='dozen':
+                if re.search('dozen', row.net_content_quantity_unit_of_measure, flags=re.I):
                     rec = row.quantity/(12*row.net_content_quantity_value)
                     recommended_qty.append(np.ceil(rec))
                     product_qty.append(12*row.net_content_quantity_value)
-                elif row.net_content_quantity_unit_of_measure.strip().lower() =='count':
+                elif re.search('count', row.net_content_quantity_unit_of_measure, flags=re.I):
                     rec = row.quantity
                     recommended_qty.append(np.ceil(rec))
                     product_qty.append(row.package_weight)
-                elif row.net_content_quantity_unit_of_measure.strip().lower() =='each':
+                elif re.search('each', row.net_content_quantity_unit_of_measure, flags=re.I):
                     rec = row.quantity
                     recommended_qty.append(np.ceil(rec))
                     product_qty.append(row.package_weight)
+                elif re.search('ounce', row.package_weight_unit_of_measure, flags=re.I):
+                    for i, ele in enumerate(list_ing):
+                        if re.search(ele, row.ingredient, flags=re.I):
+                            if df_count_to_weight['Unit'][i].strip() == 'oz':
+                                rec = df_count_to_weight['Weight'][i]*row.quantity                      
+                            else:
+                                rec = df_count_to_weight['Weight'][i]*16*row.quantity
+                    final_req = rec/row.package_weight
+                    recommended_qty.append(np.ceil(final_req))
+                    product_qty.append(row.net_content_quantity_value)
+                elif re.search('pound', row.package_weight_unit_of_measure, flags=re.I):
+                    for i, ele in enumerate(list_ing):
+                        if re.search(ele, row.ingredient, flags=re.I):
+                            if df_count_to_weight['Unit'][i].strip() == 'oz':
+                                rec = (df_count_to_weight['Weight'][i]/16)*row.quantity                      
+                            else:
+                                rec = df_count_to_weight['Weight'][i]*row.quantity
+                    final_req = rec/row.package_weight
+                    recommended_qty.append(np.ceil(final_req))
+                    product_qty.append(row.net_content_quantity_value)
                 else:    
                     recommended_qty.append(0)
                     product_qty.append(0)
+                    
         print(recommended_qty)
         df['product_qty_oz_ct'] = product_qty
         df['recommended_qty'] = recommended_qty
