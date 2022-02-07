@@ -1,4 +1,6 @@
 from sentence_transformers import util
+from pattern_search import *
+import torch
 
 class TransformerRanker:
     def __init__(self, model, product_ids, max_rank=100,  clf=None):
@@ -15,9 +17,11 @@ class TransformerRanker:
         self.embeddings = embeddings
         
     def get_scores_ingredient(self, ingredient, max_rank=None):
+        multiple_nouns = get_noun_food(ingredient)
+        if len(multiple_nouns) and multiple_nouns != ingredient:
+            ingredient =  ingredient +  ' ' + multiple_nouns
         if not max_rank:
             max_rank=self.max_rank
-
         ingredient_embedding = self.model.encode(ingredient, convert_to_tensor=True)
         scores = util.pytorch_cos_sim(ingredient_embedding, self.embeddings)[0]
         product_scores = dict(zip(self.product_ids, scores.numpy()))
@@ -26,8 +30,24 @@ class TransformerRanker:
                                 reverse=True)[0:100]
         if self.clf:
             tcin_list =  [product_score[0] for product_score in product_scores]
-            tcin_list = self.clf.filter_by_class(ingredient, tcin_list)
-            product_scores = [product_score for product_score in product_scores if product_score[0] in tcin_list]
+            tcin_list_filtered = []
+            for clf in self.clf:
+                if clf.hier_column != 'subclass_name':
+                    tcin_list_filtered += clf.filter_by_hier(ingredient, 
+                                                             tcin_list, 
+                                                             clf.hier_column)
+                else:
+                    tcin_list_subclass = clf.filter_by_hier(ingredient,
+                                                             tcin_list, 
+                                                             clf.hier_column)
+                    if len(tcin_list_subclass) >= 3:
+                        tcin_list_filtered = tcin_list_subclass
+            if len(tcin_list_filtered) >= 3:
+                tcin_list = tcin_list_filtered
+            product_scores = [product_score 
+                                for product_score 
+                                in product_scores 
+                                if product_score[0] in tcin_list]
         return product_scores[0:max_rank]
         
     def get_scores_recipe(self, ingredient_list, max_rank=None):
@@ -77,12 +97,14 @@ class TransformerRanker:
 
 class CrossEncoderRanker(TransformerRanker):
     def __init__(self, bi_model, cross_model, tcin_sentence_map, cross_rank=10, 
-                 bi_rank=50):
+                 bi_rank=50, mapper=None, weights=False):
         self.bi_model = bi_model
         self.cross_model = cross_model
         self.cross_rank = cross_rank
         self.bi_rank = bi_rank
-        self.mapper = tcin_sentence_map
+        self.tcin_sentence_map = tcin_sentence_map
+        self.mapper = mapper
+        self.weights = weights
 
     def get_scores_ingredient(self, ingredient, max_rank=None):
         if not max_rank:
@@ -92,9 +114,14 @@ class CrossEncoderRanker(TransformerRanker):
         tcins = self.bi_model.rank_products_ingredient(ingredient, max_rank=self.bi_rank)
         sentences = []
         for tcin in tcins:
-            sentences.append(self.mapper[self.mapper['tcin'] == tcin]['sentence'].values[0])
+            sentences.append(self.tcin_sentence_map[self.tcin_sentence_map['tcin'] == tcin]['sentence'].values[0])
         pairs = [(ingredient, sentence.lower()) for sentence in sentences]
         scores = self.cross_model.predict(pairs)
+        if self.weights == True:
+            std = scores.std()
+            for i, tcin in enumerate(tcins):
+                if self.mapper.get_column_value(tcin, 'division_name') in ['PRODUCE/FLORAL', 'DRY GROCERY']:
+                    scores[i] = scores[i] + 2 * std
         product_score = dict(zip(tcins, scores))
         product_score = sorted(product_score.items(), 
                                 key = lambda x: x[1], 
@@ -177,17 +204,22 @@ class Classifier():
     def predict(self, x):
         return self.model.predict(x)
 
-    def filter_by_class(self, ingredient, tcin_list):
-        class_list = self.pm.get_column_list(tcin_list, 'class_name')
+    def filter_by_hier(self, ingredient, tcin_list, hier_column):
+        hier_column_list = self.pm.get_column_list(tcin_list, hier_column)
         scores = self.model.predict([ingredient])
+        scores = torch.nn.functional.softmax(torch.tensor(scores)).numpy()
         n = 1
         labels = [(self.le.encoder[score_argmax], score_max)
           for score_argmax, score_max 
           in zip(scores.argsort()[-n:][::-1], sorted(scores, reverse=True)[0:n])]
         if labels[0][1] > self.threshold:
-           idx = [i for i, class_name in enumerate(class_list) if class_name == labels[0][0]]
+           idx = [i for i, hier_column_val 
+                    in enumerate(hier_column_list) 
+                    if hier_column_val == labels[0][0]]
            tcin_list = [tcin_list[i] for i in idx]
            print(f'Filtered {ingredient} for {self.hier_column}: {labels[0][0]}')
+        else:
+            tcin_list = []
         return tcin_list
 
 

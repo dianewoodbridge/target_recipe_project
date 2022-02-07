@@ -28,7 +28,8 @@ def get_hypernym(ingredient):
         pass
     if is_food(hypernym):
         return hypernym.replace('_', ' ')
-    return hypernym
+    else:
+        return ''
 
 def get_hyponyms(ingredient):
     if ' ' in ingredient:
@@ -45,6 +46,19 @@ def get_hyponyms(ingredient):
         pass
     return list(set(hyponym_list))
 
+def get_synonyms(ingredient):
+    if ' ' in ingredient:
+        ingredient = ingredient.replace(' ', '_')
+    synonym_list = []
+    try:
+        synsets = wn.synsets(ingredient)
+        for synset in synsets:
+            synonym_list += synset.lemma_names()
+        synonym_list = [h.replace('_', ' ') for h in synonym_list if is_food(h)]
+    except:
+        pass
+    return list(set(synonym_list))
+
 def get_noun(ingredient):
     doc = nlp(ingredient)
     return " ".join([token.text for token in doc if token.pos_ == "NOUN"])
@@ -59,6 +73,17 @@ def stem_ingredient(ingredient):
     stemmer = PorterStemmer()
     stemmed = " ".join([stemmer.stem(w) for w in ingredient.split()])
     return stemmed
+
+def get_noun_food(ingredient):
+    noun = get_noun(ingredient)
+    food_items = []
+    if noun:
+        if ' ' in noun:
+            for s in noun.split():
+                if is_food(s):
+                    food_items.append(s)
+            return " ".join(food_items)
+    return noun
 
 class PatternMatcher:
     def __init__(self, group10, k=10):
