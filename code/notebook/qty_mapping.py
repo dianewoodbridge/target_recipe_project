@@ -4,9 +4,16 @@ import re
 from preprocessor import *
 
 class Qty_normal_map:
-    def __init__(self, unit_abbreviation, op_file_path):
-        self.unit_abbreviation = unit_abbreviation
+    def __init__(self, op_file_path, data):
+        self.unit_abbreviation = { 'tbsp' : ['tbsp', "tablespoon","tablespoons"],
+                      'tsp' : ['tsp', 'teaspoon', 'teaspoons'],
+                     'ml' : ['ml', 'milliliter','milliliters'],
+                     'cup' : ['cups','cup'],
+                     'oz' : ['ounces','oz', 'ounce'] , 
+                     'lb' : ['pound','lb','lbs','lbs.']
+                        }
         self.op_file_path = op_file_path
+        self.data = data
         
     #Normalizes quantity required
     def normalize_units(self, combined_ingredient_df):
@@ -40,7 +47,11 @@ class Qty_normal_map:
         combined_ingredient_df['Volume_in_ml'] = combined_ingredient_df['quantity']*m_list
         
         return combined_ingredient_df
-    
+    def combine_qty(self, df):
+        return df.groupby(by=['ingredient', 'normalized_unit'], as_index = False)\
+                                      .agg({'quantity': 'sum', 'Volume_in_ml': 'sum'})
+
+
     def search_density(self, ingredient):
         df = pd.read_csv(self.op_file_path)
         df['standard_unit'] = np.where(df['standard_unit'].isna(), '', df['standard_unit'])
@@ -87,7 +98,29 @@ class Qty_normal_map:
         df['req_oz']=req_oz
         df['req_oz']=np.round(df['req_oz'], 3)
         return df
-    
+
+    def match_ranked_ingredients(self, ranked_match, final_df, recipe_ingredients):
+
+        rslt_df = self.data[['title', 'tcin', 'short_desc','price','net_content_quantity_unit_of_measure', 'net_content_quantity_value', 'package_weight_unit_of_measure','package_weight']]
+        final_rslt_df=pd.DataFrame()
+
+        for i in range(len(ranked_match)):
+            rslt_inter = rslt_df.loc[self.data['tcin'].isin(ranked_match[i])] 
+            ing = recipe_ingredients[i]
+            length = min(len(ranked_match[i]),9)
+            for n in range(0,length):
+                for j, row in rslt_inter.iterrows():
+                    if row.tcin == ranked_match[i][n] :
+                        rslt_inter.loc[j,'rank']=n+1
+                        rslt_inter.loc[j,'ingredient']=ing
+                        break
+               
+            rslt_inter_n=rslt_inter.sort_values('rank')[0:9] 
+            final_rslt_df= pd.concat([final_rslt_df,rslt_inter_n], ignore_index=True)
+
+        join_df = pd.merge(final_rslt_df, final_df, how = 'left', on = 'ingredient')
+        return join_df
+
     def read_count_to_weight(self):
         df = pd.read_csv('../../data/count_to_weight.csv')
         df['Weight']=df['Imperial'].apply(lambda x: float(x.split(' ')[0]))
