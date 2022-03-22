@@ -101,11 +101,11 @@ class Qty_normal_map:
 
     def match_ranked_ingredients(self, ranked_match, final_df, recipe_ingredients):
 
-        rslt_df = self.data[['title', 'tcin', 'short_desc','price','net_content_quantity_unit_of_measure', 'net_content_quantity_value', 'package_weight_unit_of_measure','package_weight']]
+        rslt_df = self.data[['title', 'tcin', 'short_desc','price','net_content_quantity_unit_of_measure', 'net_content_quantity_value', 'package_weight_unit_of_measure','package_weight']].copy()
         final_rslt_df=pd.DataFrame()
 
         for i in range(len(ranked_match)):
-            rslt_inter = rslt_df.loc[self.data['tcin'].isin(ranked_match[i])] 
+            rslt_inter = rslt_df.loc[self.data['tcin'].isin(ranked_match[i])].copy() 
             ing = recipe_ingredients[i]
             length = min(len(ranked_match[i]),9)
             for n in range(0,length):
