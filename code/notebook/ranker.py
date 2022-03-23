@@ -1,33 +1,84 @@
+from rank_bm25 import BM25Okapi
 from sentence_transformers import util
 from pattern_search import *
+from preprocessor import *
 import torch
+import joblib
+from tqdm import tqdm
 
-class TransformerRanker:
-    def __init__(self, model, product_ids, max_rank=100,  clf=None):
+class Ranker:        
+    def get_scores_recipe(self, ingredient_list, max_rank=None, filtered_products_list=None):
+        recipe_scores = []
+        if filtered_products_list:
+            for ingredient, filtered_products in zip(ingredient_list, filtered_products_list):
+                ingredient_scores = self.get_scores_ingredient(ingredient, max_rank, filtered_products)
+                recipe_scores.append(ingredient_scores)
+        else:
+            for ingredient in ingredient_list:
+                ingredient_scores = self.get_scores_ingredient(ingredient, max_rank, filtered_products_list)
+                recipe_scores.append(ingredient_scores)
+        return recipe_scores
+
+    def rank_products_ingredient(self, ingredient, max_rank=None, filtered_products=None):
+        product_scores = self.get_scores_ingredient(ingredient, max_rank, filtered_products)
+        return [product_score[0] for product_score in product_scores]
+    
+    def rank_products_recipe(self, ingredient_list, max_rank=None, filtered_products=None):
+        recipe_scores = self.get_scores_recipe(ingredient_list, max_rank, filtered_products)
+        return [[product_score[0] for product_score in product_scores] 
+                for product_scores in recipe_scores]
+
+class TransformerRanker(Ranker):
+    def __init__(self, model, max_rank=100,  clf=None, filtered_products=None):
         self.model = model
         self.max_rank = max_rank
-        self.product_ids = product_ids
         self.clf = clf
+        self.filtered_products = filtered_products
     
     def fit(self, documents):
         self.embeddings = self.model.encode(documents, 
                                             convert_to_tensor=True)
         
     def load_embeddings(self, embeddings):
-        self.embeddings = embeddings
+        self.product_ids = pd.Series(embeddings['ids'])
+        self.embeddings = embeddings['embeddings']
         
-    def get_scores_ingredient(self, ingredient, max_rank=None):
+    def get_scores_ingredient(self, ingredient, max_rank=None, filtered_products=None):
+        if not filtered_products:
+            filtered_products = self.filtered_products
+        if not max_rank:
+            max_rank=self.max_rank
+
+        # Ingredient Embedding
         multiple_nouns = get_noun_food(ingredient)
         if len(multiple_nouns) and multiple_nouns != ingredient:
             ingredient =  ingredient +  ' ' + multiple_nouns
-        if not max_rank:
-            max_rank=self.max_rank
         ingredient_embedding = self.model.encode(ingredient, convert_to_tensor=True)
-        scores = util.pytorch_cos_sim(ingredient_embedding, self.embeddings)[0]
-        product_scores = dict(zip(self.product_ids, scores.numpy()))
+
+        # If there are filtered products already, search only in them
+        if filtered_products:
+            filtered_products_flag = self.product_ids.isin(filtered_products).values
+            product_ids = self.product_ids[filtered_products_flag]
+            embeddings = self.embeddings[filtered_products_flag]
+        else:
+            product_ids = self.product_ids
+            embeddings = self.embeddings
+
+        scores = util.pytorch_cos_sim(ingredient_embedding, embeddings)[0]
+        scores = scores.numpy()
+        
+        # Normalize scores
+        min_doc_score = np.min(scores)
+        max_doc_score = np.max(scores)
+        scores = (scores - min_doc_score)/ (max_doc_score - min_doc_score)
+
+        product_scores = dict(zip(product_ids, scores))
+        # Reduce number of products to be classified for classification models (for speed)
+        n_products_classification = min(len(product_scores), 100)
+
         product_scores = sorted(product_scores.items(), 
                                 key = lambda x: x[1], 
-                                reverse=True)[0:100]
+                                reverse=True)[0:n_products_classification]
         if self.clf:
             tcin_list =  [product_score[0] for product_score in product_scores]
             tcin_list_filtered = []
@@ -49,51 +100,6 @@ class TransformerRanker:
                                 in product_scores 
                                 if product_score[0] in tcin_list]
         return product_scores[0:max_rank]
-        
-    def get_scores_recipe(self, ingredient_list, max_rank=None):
-        recipe_scores = []
-        for ingredient in ingredient_list:
-            ingredient_scores = self.get_scores_ingredient(ingredient, max_rank)
-            recipe_scores.append(ingredient_scores)
-        return recipe_scores
-
-    def rank_products_ingredient(self, ingredient, max_rank=None):
-        product_scores = self.get_scores_ingredient(ingredient, max_rank)
-        return [product_score[0] for product_score in product_scores]
-    
-    def rank_products_recipe(self, ingredient_list, max_rank=None):
-        recipe_scores = self.get_scores_recipe(ingredient_list, max_rank)
-        return [[product_score[0] for product_score in product_scores] 
-                for product_scores in recipe_scores]
-
-    # Following code is not required
-    def get_scores_ingredient_custom(self, ingredient, model, tokenizer):
-        import torch
-        #Mean Pooling - Take attention mask into account for correct averaging
-        def mean_pooling(model_output, attention_mask):
-            token_embeddings = model_output[0] #First element of model_output contains all token embeddings
-            input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
-            sum_embeddings = torch.sum(token_embeddings * input_mask_expanded, 1)
-            sum_mask = torch.clamp(input_mask_expanded.sum(1), min=1e-9)
-            return sum_embeddings / sum_mask
-        #Tokenize sentences
-        encoded_input = tokenizer(ingredient, padding=True, truncation=True, max_length=128, return_tensors='pt')
-        #Compute token embeddings
-        with torch.no_grad():
-                model_output = model.encoder(
-                    input_ids=encoded_input["input_ids"], 
-                    attention_mask=encoded_input["attention_mask"], 
-                    return_dict=True
-                )
-        #Perform pooling. In this case, mean pooling
-        ingredient_embedding = mean_pooling(model_output, encoded_input['attention_mask'])
-        scores = util.pytorch_cos_sim(ingredient_embedding, self.embeddings)[0]
-        product_score = dict(zip(self.product_ids, scores.numpy()))
-        product_score = sorted(product_score.items(), 
-                                key = lambda x: x[1], 
-                                reverse=True)
-        return product_score[0:self.max_rank]
-
 
 class CrossEncoderRanker(TransformerRanker):
     def __init__(self, bi_model, cross_model, tcin_sentence_map, cross_rank=10, 
@@ -106,17 +112,21 @@ class CrossEncoderRanker(TransformerRanker):
         self.mapper = mapper
         self.weights = weights
 
-    def get_scores_ingredient(self, ingredient, max_rank=None):
+    def get_scores_ingredient(self, ingredient, max_rank=None, filtered_products=None):
         if not max_rank:
             max_rank = self.cross_rank
         if isinstance(ingredient, list):
             ingredient = ingredient[0]
-        tcins = self.bi_model.rank_products_ingredient(ingredient, max_rank=self.bi_rank)
+        tcins = self.bi_model.rank_products_ingredient(ingredient, 
+                                                        max_rank=self.bi_rank, 
+                                                        filtered_products=filtered_products)                                          
         sentences = []
         for tcin in tcins:
             sentences.append(self.tcin_sentence_map[self.tcin_sentence_map['tcin'] == tcin]['sentence'].values[0])
         pairs = [(ingredient, sentence.lower()) for sentence in sentences]
         scores = self.cross_model.predict(pairs)
+        scores = 1 / (1 + np.exp(-scores))
+
         if self.weights == True:
             std = scores.std()
             for i, tcin in enumerate(tcins):
@@ -128,58 +138,50 @@ class CrossEncoderRanker(TransformerRanker):
                                 reverse=True)
         return product_score[0:max_rank]
 
-
-from fse import IndexedList
-from fse.models import SIF
-from gensim.models import FastText
-import pandas as pd
-from preprocessor import *
-class FastRanker:
-    def __init__(self, embeddings, data, max_rank=100):
-        self.embeddings = embeddings
+class BM25Ranker(Ranker):
+    def __init__(self, product_ids, max_rank=100, query_expansion=True):
+        self.product_ids = product_ids
         self.max_rank = max_rank
-        self.data = data
+        self.query_expansion = query_expansion
 
-    def fit(self, documents):
-        tokenized_sentences = [head.split() for head in preprocess(documents)]
-        self.indexed_docs = IndexedList(tokenized_sentences)
-        self.data['processed'] = tokenized_sentences
-        self.model = SIF(self.embeddings , workers=8)
-        self.model.train(self.indexed_docs)
-        
-    def get_scores_ingredient(self, search_string, max_rank=10):
+    def fit_corpus(self, articles, min_word_count = 1, op_path=None):
+        corpus = []
+        for article in tqdm(articles):
+            corpus.append(tokenizer(article))
+
+        # build a word count dictionary so we can remove words that appear only once
+        word_count_dict = {}
+        for text in corpus:
+            for token in text:
+                word_count = word_count_dict.get(token, 0) + 1
+                word_count_dict[token] = word_count
+
+        texts = [[token for token in text if word_count_dict[token] > min_word_count] for text in corpus]
+        if op_path:
+            joblib.dump(texts, op_path)
+        return texts
+
+    def fit(self, texts):
+        self.model = BM25Okapi(texts)
+
+    def get_scores_ingredient(self, ingredient, max_rank=None, filtered_list=None):
         if not max_rank:
             max_rank=self.max_rank
-        process_search_str = search_string.split()
-        matching_idx = []
-        matched_data = self.model.sv.similar_by_sentence(sentence=process_search_str,
-                                                        model=self.model, 
-                                                        indexable=self.indexed_docs.items,
-                                                        topn=max_rank)
-        for match in matched_data:
-            matching_idx.append((match[1], match[2]))
+        if self.query_expansion:
+            ingredient = query_expansion(ingredient)
+        tokenized_query = tokenizer(ingredient)
+        doc_scores = self.model.get_scores(tokenized_query)
 
-        result_df = pd.DataFrame(columns=['tcin', 'similarity'], index=range(max_rank))
-        for i in range(max_rank):
-            result_df['tcin'][i] = self.data.tcin.iloc[matching_idx[i][0]]
-            result_df['similarity'][i] = matching_idx[i][1]
-        return list(result_df.to_records(index=False))
+        # Normalize
+        min_doc_score = np.min(doc_scores)
+        max_doc_score = np.max(doc_scores)
+        doc_scores = (doc_scores - min_doc_score)/ (max_doc_score - min_doc_score)
         
-    def get_scores_recipe(self, ingredient_list, max_rank=None):
-        recipe_scores = []
-        for ingredient in ingredient_list:
-            ingredient_scores = self.get_scores_ingredient(ingredient, max_rank)
-            recipe_scores.append(ingredient_scores)
-        return recipe_scores
-
-    def rank_products_ingredient(self, ingredient, max_rank=None):
-        product_scores = self.get_scores_ingredient(ingredient, max_rank)
-        return [product_score[0] for product_score in product_scores]
-    
-    def rank_products_recipe(self, ingredient_list, max_rank=None):
-        recipe_scores = self.get_scores_recipe(ingredient_list, max_rank)
-        return [[product_score[0] for product_score in product_scores] 
-                for product_scores in recipe_scores]
+        product_scores = dict(zip(self.product_ids, doc_scores))
+        product_scores = sorted(product_scores.items(), 
+                        key = lambda x: x[1], 
+                        reverse=True)
+        return product_scores[0:max_rank]         
 
 class LabelEncoderWithNA():
     def fit(self, train, col):
@@ -221,5 +223,72 @@ class Classifier():
         else:
             tcin_list = []
         return tcin_list
+
+class RankerPipeline:
+    def __init__(self, rankers, max_ranks):
+        self.rankers = rankers
+        self.max_ranks = max_ranks
+
+    def get_scores_ingredient(self, ingredient):
+        filtered_products = None
+        for ranker, max_rank in zip(self.rankers, self.max_ranks):
+            product_scores = ranker.get_scores_ingredient(ingredient, max_rank, filtered_products)
+            filtered_products = [product_score[0] for product_score in product_scores]
+        return product_scores
+
+    def get_scores_recipe(self, ingredients):
+        recipe_scores = []
+        for ingredient in ingredients:
+            ingredient_scores = self.get_scores_ingredient(ingredient)
+            recipe_scores.append(ingredient_scores)
+        return recipe_scores
+
+    def rank_products_ingredient(self, ingredient):
+        product_scores = self.get_scores_ingredient(ingredient)
+        return [product_score[0] for product_score in product_scores]
+
+    def rank_products_recipe(self, ingredients):
+        recipe_scores = self.get_scores_recipe(ingredients)
+        return [[product_score[0] for product_score in product_scores] 
+                for product_scores in recipe_scores]
+
+class RankerCombination:
+    def __init__(self, rankers, weights, max_rank = 10):
+        self.rankers = rankers
+        self.weights = weights
+        self.max_rank = max_rank
+
+    def get_scores_ingredient(self, ingredient, max_rank=None, filtered_products=None):
+        if not max_rank:
+            max_rank=self.max_rank
+
+        for i, ranker in enumerate(self.rankers):
+            ranker_scores = ranker.get_scores_ingredient(ingredient, max_rank, filtered_products)
+            if i == 0:
+                df = pd.DataFrame(ranker_scores, columns=['tcin', 'score'])
+                df['score'] = self.weights[i]*df['score']
+            else:
+                new_df =  pd.DataFrame(ranker_scores, columns=['tcin', 'score'])            
+                df = pd.merge(df, new_df, how='outer', on='tcin').fillna(0)
+                df['score'] = df['score_x'] + self.weights[i]*df['score_y']
+                df.drop(columns=['score_x', 'score_y'], inplace=True)
+        df = df.sort_values('score', ascending=False)[0: max_rank]
+        return list(df.itertuples(index=False, name=None))
+
+    def get_scores_recipe(self, ingredients):
+        recipe_scores = []
+        for ingredient in ingredients:
+            ingredient_scores = self.get_scores_ingredient(ingredient)
+            recipe_scores.append(ingredient_scores)
+        return recipe_scores
+
+    def rank_products_ingredient(self, ingredient):
+        product_scores = self.get_scores_ingredient(ingredient)
+        return [product_score[0] for product_score in product_scores]
+
+    def rank_products_recipe(self, ingredients):
+        recipe_scores = self.get_scores_recipe(ingredients)
+        return [[product_score[0] for product_score in product_scores] 
+                for product_scores in recipe_scores]
 
 

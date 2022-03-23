@@ -127,7 +127,7 @@ def recipe_load_index(i, recipe):
                         j = ' '.join(i for i in qty)
                         dict_ingredients['ingredient'].append(j.split(',')[0].strip())
 
-    return dict_ingredients
+    return id, dict_ingredients
 
 def convert_fraction(utf):
     if utf is np.nan:

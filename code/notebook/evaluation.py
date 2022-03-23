@@ -32,7 +32,7 @@ def avg_precision_till(k, ranker_lists, relevant_docs_list):
     precision_sum = np.zeros(k)
     for ranker_list, relevant_docs in zip(ranker_lists, relevant_docs_list):
         precision_sum += np.array(precision_till(k, ranker_list, relevant_docs))
-    return precision_sum / len(relevant_docs_list)
+    return precision_sum / len(ranker_lists)
 
 def avg_recall_till(k, ranker_lists, relevant_docs_list):
     recall_sum = np.zeros(k)
@@ -48,7 +48,7 @@ def average_precision(ranker_list, relevant_docs):
     precision_sum = 0
     for k in k_values:
         precision_sum += precision_at(k, ranker_list, relevant_docs)
-    return precision_sum / len(k_values)
+    return precision_sum / min(len(relevant_docs), len(ranker_list))
 
 def mean_average_precision(ranker_lists, relevant_docs_list, return_ap = False):
     avg_precision_sum = 0
@@ -57,7 +57,7 @@ def mean_average_precision(ranker_lists, relevant_docs_list, return_ap = False):
         ap = average_precision(ranker_list, relevant_docs)
         ap_list.append(ap)
         avg_precision_sum += ap
-    mean_avg_precision = avg_precision_sum / len(relevant_docs_list)
+    mean_avg_precision = avg_precision_sum / len(ranker_lists)
     if return_ap == True:
         return mean_avg_precision, ap_list
     return mean_avg_precision

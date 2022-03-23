@@ -31,6 +31,21 @@ def get_hypernym(ingredient):
     else:
         return ''
 
+def get_hypernyms(ingredient):
+    if ' ' in ingredient:
+        ingredient = ingredient.replace(' ', '_')
+    hypernym_list = []
+    try:
+        synsets = wn.synsets(ingredient)
+        for synset in synsets:
+            hypernyms = synset.hypernyms()
+            for hypernym in hypernyms:
+                hypernym_list += hypernym.lemma_names()
+        hypernym_list = [h.replace('_', ' ') for h in hypernym_list if is_food(h)]
+    except:
+        pass
+    return list(set(hypernym_list))        
+
 def get_hyponyms(ingredient):
     if ' ' in ingredient:
         ingredient = ingredient.replace(' ', '_')
