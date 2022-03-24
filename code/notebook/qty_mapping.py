@@ -185,7 +185,7 @@ class Qty_normal_map:
                         if row.normalized_unit == 'count' and row.quantity == 1:
                             final_req=1
                         else:
-                            final_req=0
+                            final_req=1
                            
                     recommended_qty.append(np.ceil(final_req))
                     product_qty.append(row.package_weight)
@@ -205,7 +205,7 @@ class Qty_normal_map:
                         if row.normalized_unit == 'count' and row.quantity == 1:
                             final_req=1
                         else:
-                            final_req=0
+                            final_req=1
  
                     recommended_qty.append(np.ceil(final_req))
                     product_qty.append(row.package_weight)

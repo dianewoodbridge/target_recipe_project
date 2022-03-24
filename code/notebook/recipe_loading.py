@@ -5,59 +5,6 @@ import pandas as pd
 import numpy as np
 
 
-def recipe_load(n, recipe):
-    dict_ingredients = {'ingredient': [],
-                        'unit': [],
-                        'quantity': []
-                        }
-    ingredients_list = []
-    unit_regex = r" ounces | ounce | teaspoon | teaspoons | cups | cup | tablespoon | tablespoons | tbsp | tsp | can | lb | pound "
-    for i in range(0, n):
-        title = recipe[i]['title']
-        id = recipe[i]['id']
-
-        for lis in recipe[i]['ingredients']:
-            for key, val in lis.items():
-                ingredients_list.append(val)
-                rem = re.sub("[\(\[].*?[\)\]]", "", val)
-                rem = re.sub(' c. ', ' cup ', rem)
-                rem = re.sub("[.]", "", rem)
-                if rem != '':
-                    u = re.findall(unit_regex, rem,  flags=re.I)
-                    if len(u) == 0:
-                        qty = re.split(' ', rem)
-                        qty_list = re.findall('[0-9/]+', qty[0])
-                        if len(qty_list) != 0:
-
-                            dict_ingredients['quantity'].append(qty_list[-1])
-                            dict_ingredients['unit'].append('count')
-                            j = ' '.join(i for i in qty[1:])
-                            dict_ingredients['ingredient'].append(j.split(',')[0].strip())
-                        else:
-                            dict_ingredients['quantity'].append(np.nan)
-                            dict_ingredients['unit'].append('')
-                            j = ' '.join(i for i in qty)
-                            dict_ingredients['ingredient'].append(j.split(',')[0].strip())
-
-                    else:
-                        qty = \
-                        re.split(unit_regex, rem, flags=re.I)[0].strip()
-                        qty_list = re.findall('[0-9/]+', qty)
-
-                        if len(qty_list) != 0:
-                            dict_ingredients['unit'].append(u[0])
-                            dict_ingredients['quantity'].append(qty_list[-1])
-                            j = \
-                            re.split(unit_regex, rem,  flags=re.I)[1].strip()
-                            dict_ingredients['ingredient'].append(j.split(',')[0].strip())
-                        else:
-                            dict_ingredients['quantity'].append(np.nan)
-                            dict_ingredients['unit'].append('')
-                            j = ' '.join(i for i in qty)
-                            dict_ingredients['ingredient'].append(j.split(',')[0].strip())
-
-    return dict_ingredients
-
 def recipe_load_index(i, recipe):
     dict_ingredients = {'ingredient': [],
                         'unit': [],
@@ -146,3 +93,17 @@ def convert_fraction(utf):
         return number
 
     return utf
+
+def recipe_load_gadget(n, recipe):
+    recipe_instr=[]
+#     for i in range(s,n):
+    title = recipe[n]['title']
+    id = recipe[n]['id']
+    print(title)
+        
+    for lis in recipe[n]['instructions']:
+        for key, val in lis.items():   
+            rem = re.sub("[\(\[].*?[\)\]]", "", val)
+            if rem !='':
+                recipe_instr.append(rem)
+    return ' '.join(recipe_instr)
