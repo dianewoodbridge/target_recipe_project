@@ -14,7 +14,7 @@ def recipe_load_index(i, recipe):
     title = recipe[i]['title']
     id = recipe[i]['id']
     print(f'Recipe: {title}')
-    unit_regex = r" ounces | ounce | teaspoon | teaspoons | cups | cup | tablespoon | tablespoons | tbsp | tsp | can | lb | pound "
+    unit_regex = r" ounces | ounce | teaspoon | grams | teaspoons | cups | cup | tablespoon | tablespoons | tbsp | tsp | can | lb | pound | count | ml | pinch "
     
     for lis in recipe[i]['ingredients']:
         for key, val in lis.items():
@@ -22,45 +22,76 @@ def recipe_load_index(i, recipe):
             rem = re.sub("[\(\[].*?[\)\]]", "", val)
             rem = re.sub(' c. ', ' cup ', rem)
             rem = re.sub("[.]", "", rem)
+            rem = re.sub("packages", "count", rem)
+            rem = re.sub("cloves", "clove", rem)
+      
+            # If ingredient read
             if rem != '':
                 u = re.findall(unit_regex, rem,  flags=re.I)
+                #if no unit read
+                
                 if len(u) == 0:
                     qty = re.split(' ', rem)
                     qty_list = re.findall('[0-9/]+', qty[0])
-                    if len(qty_list) != 0:
-
+                    if ('clove garlic' in rem) or ('garlic clove' in rem) :
+                        dict_ingredients['unit'].append('cloves')
+                        dict_ingredients['quantity'].append(qty_list[0])
+                        dict_ingredients['ingredient'].append('garlic')
+                        
+                        
+                    elif len(qty_list) != 0:
+                        
                         dict_ingredients['quantity'].append(qty_list[-1])
                         dict_ingredients['unit'].append('count')
                         j = ' '.join(i for i in qty[1:])
                         dict_ingredients['ingredient'].append(j.split(',')[0].strip())
+                        
                     else:
                         dict_ingredients['quantity'].append(np.nan)
                         dict_ingredients['unit'].append('')
                         j = ' '.join(i for i in qty)
                         dict_ingredients['ingredient'].append(j.split(',')[0].strip())
-
+                # If unit read
                 else:
                     qty = re.split(unit_regex, rem,  flags=re.I)[0].strip()
                     qty_list = re.findall('[0-9/]+', qty)
 
+                    # If single quantity parsed
                     if len(qty_list) == 1:
                         dict_ingredients['unit'].append(u[0])
                         dict_ingredients['quantity'].append(qty_list[0])
                         j = re.split(unit_regex, rem,  flags=re.I)[1].strip()
                         dict_ingredients['ingredient'].append(j.split(',')[0].strip())
+                    
+                    # If multiple quantity values parsed  
                     elif len(qty_list) > 1:
-                        
+                        # If quantity parsed in fractions
                         if re.findall(r'/', qty):
                             qt = qty_list[0] + '-' + qty_list[1]
                             dict_ingredients['quantity'].append(qt)
                             dict_ingredients['unit'].append(u[0])
-                            j = re.split(unit_regex, rem,  flags=re.I)[1].split('or')[0]
+                            j = re.split(unit_regex, rem,  flags=re.I)[1].split(' or ')[0]
                             dict_ingredients['ingredient'].append(j.split(',')[0].strip())
+                            
+                        # If multiple quantities parsed are not in fractions 
                         elif len(qty_list[1])>1:
-                            qt = qty_list[0] + '-'+ qty_list[1][0] + '/'+ qty_list[1][1]
+                            if u[0].strip() in ['grams','gram']:
+                                qt = max(qty_list)
+                                dict_ingredients['quantity'].append(qt)
+                                dict_ingredients['unit'].append(u[0])
+                                j = re.split(unit_regex, rem,  flags=re.I)[1].split(' or ')[0]
+                                dict_ingredients['ingredient'].append(j.split(',')[0].strip())
+                            else:
+                                qt = qty_list[0] + '-'+ qty_list[1][0] + '/'+ qty_list[1][1]
+                                dict_ingredients['quantity'].append(qt)
+                                dict_ingredients['unit'].append(u[0])
+                                j = re.split(unit_regex, rem,  flags=re.I)[1].split(' or ')[0]
+                                dict_ingredients['ingredient'].append(j.split(',')[0].strip())
+                        elif int(qty_list[1])>1:
+                            qt = max(qty_list)
                             dict_ingredients['quantity'].append(qt)
                             dict_ingredients['unit'].append(u[0])
-                            j = re.split(unit_regex, rem,  flags=re.I)[1].split('or')[0]
+                            j = re.split(unit_regex, rem,  flags=re.I)[1].split(' or ')[0]
                             dict_ingredients['ingredient'].append(j.split(',')[0].strip())
                         else: 
                             dict_ingredients['quantity'].append(qty_list[0])

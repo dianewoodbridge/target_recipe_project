@@ -10,7 +10,8 @@ class Qty_normal_map:
                      'ml' : ['ml', 'milliliter','milliliters'],
                      'cup' : ['cups','cup'],
                      'oz' : ['ounces','oz', 'ounce'] , 
-                     'lb' : ['pound','lb','lbs','lbs.']
+                     'lb' : ['pound','lb','lbs','lbs.'],
+                     'pinch' : ['pinch']
                         }
         self.op_file_path = op_file_path
         self.data = data
@@ -37,6 +38,8 @@ class Qty_normal_map:
                          m = 30
                     elif normalized_unit == 'lb':
                          m = 480
+                    elif normalized_unit == 'pinch':
+                         m = 1
             if normalized_unit == '':
                 normalized_unit = unit
                 m = 0
@@ -57,9 +60,16 @@ class Qty_normal_map:
         df['standard_unit'] = np.where(df['standard_unit'].isna(), '', df['standard_unit'])
         ing = (df['ingredient']).tolist()
         for n,i in enumerate(ing):
+            unit = re.sub("[,]", "", df.iloc[n,3])
             if ingredient.lower() in i.lower():
-                unit = re.sub("[,]", "", df.iloc[n,3])
-                return (df.iloc[n,1], df.iloc[n,2] , unit)    
+                return (df.iloc[n,1], df.iloc[n,2] , unit)
+            elif len(ingredient)>1:
+                if len(ingredient)==2 and (ingredient[0]+ingredient[1]).lower() in i.lower():
+                    return (df.iloc[n,1], df.iloc[n,2] , unit)
+                if ingredient[0].lower() in i.lower():
+                    return (df.iloc[n,1], df.iloc[n,2] , unit)
+                elif ingredient[-1].lower() in i.lower():
+                    return (df.iloc[n,1], df.iloc[n,2] , unit)
         return (None, None, '')
     
     def update_density(self, combined_ingredient_df):
@@ -78,6 +88,8 @@ class Qty_normal_map:
                 req_oz.append(row.quantity)
             elif row.normalized_unit=='lb':
                 req_oz.append(row.quantity*16)
+            elif row.normalized_unit=='grams':
+                req_oz.append(row.quantity/28.35)
             elif 'cup' in row.standard_unit.strip():
                 req_gm = (row.standard_weight_gm/225)*row.Volume_in_ml
                 req_oz.append(req_gm/28.35)
@@ -204,6 +216,8 @@ class Qty_normal_map:
                     if rec==0:
                         if row.normalized_unit == 'count' and row.quantity == 1:
                             final_req=1
+                        elif row.normalized_unit == 'cloves':
+                            final_req = np.ceil(row.quantity/10)
                         else:
                             final_req=1
  
