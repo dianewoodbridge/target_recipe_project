@@ -10,7 +10,7 @@ class Qty_normal_map:
                      'ml' : ['ml', 'milliliter','milliliters'],
                      'cup' : ['cups','cup'],
                      'oz' : ['ounces','oz', 'ounce'] , 
-                     'lb' : ['pound','lb','lbs','lbs.'],
+                     'lb' : ['pound','lb','lbs','lbs.','pounds'],
                      'pinch' : ['pinch']
                         }
         self.op_file_path = op_file_path
@@ -21,7 +21,7 @@ class Qty_normal_map:
         normalized_units = list()
         m_list=[]
         for ingredient in combined_ingredient_df.iterrows():
-            unit = ingredient[1][1].strip()
+            unit = ingredient[1]['unit'].strip()
             normalized_unit = ''
             for key, val in self.unit_abbreviation.items():
                 if unit.lower() in val:
@@ -61,9 +61,11 @@ class Qty_normal_map:
         ing = (df['ingredient']).tolist()
         for n,i in enumerate(ing):
             unit = re.sub("[,]", "", df.iloc[n,3])
-            if ingredient.lower() in i.lower():
+            if ingredient.lower().strip() == i.lower().strip():
                 return (df.iloc[n,1], df.iloc[n,2] , unit)
-            elif len(ingredient)>1:
+            elif ingredient.lower() in i.lower():
+                return (df.iloc[n,1], df.iloc[n,2] , unit)
+            elif len(ingredient.split(' ')) > 1:
                 if len(ingredient)==2 and (ingredient[0]+ingredient[1]).lower() in i.lower():
                     return (df.iloc[n,1], df.iloc[n,2] , unit)
                 if ingredient[0].lower() in i.lower():
@@ -111,7 +113,7 @@ class Qty_normal_map:
         df['req_oz']=np.round(df['req_oz'], 3)
         return df
 
-    def match_ranked_ingredients(self, ranked_match, final_df, recipe_ingredients):
+    def match_ranked_ingredients(self, k, ranked_match, final_df, recipe_ingredients):
 
         rslt_df = self.data[['title', 'tcin', 'short_desc','price','net_content_quantity_unit_of_measure', 'net_content_quantity_value', 'package_weight_unit_of_measure','package_weight']].copy()
         final_rslt_df=pd.DataFrame()
@@ -119,15 +121,14 @@ class Qty_normal_map:
         for i in range(len(ranked_match)):
             rslt_inter = rslt_df.loc[self.data['tcin'].isin(ranked_match[i])].copy() 
             ing = recipe_ingredients[i]
-            length = min(len(ranked_match[i]),9)
-            for n in range(0,length):
+            for n in range(0,k):
                 for j, row in rslt_inter.iterrows():
                     if row.tcin == ranked_match[i][n] :
                         rslt_inter.loc[j,'rank']=n+1
                         rslt_inter.loc[j,'ingredient']=ing
                         break
                
-            rslt_inter_n=rslt_inter.sort_values('rank')[0:9] 
+            rslt_inter_n=rslt_inter.sort_values('rank')[0:k] 
             final_rslt_df= pd.concat([final_rslt_df,rslt_inter_n], ignore_index=True)
 
         join_df = pd.merge(final_rslt_df, final_df, how = 'left', on = 'ingredient')
@@ -140,11 +141,11 @@ class Qty_normal_map:
         df['Ingredient']=df['Ingredient'].apply(lambda x: x.strip())
         return df
     
-    def recommended_quantity(self, df):
+    def recommended_quantity(self, join_df):
         recommended_qty=[]
         product_qty=[]
         
-        
+        df = join_df.copy()
         df['package_weight']=df['package_weight'].apply(float)
         df['net_content_quantity_value']=df['net_content_quantity_value'].apply(float)
         
