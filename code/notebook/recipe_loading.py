@@ -13,7 +13,7 @@ def recipe_load_index(i, recipe):
     title = recipe[i]['title']
     id = recipe[i]['id']
     print(f'Recipe: {title}')
-    unit_regex = r" ounces | ounce | teaspoon | grams | teaspoons | cups | cup | tablespoon | tablespoons | tbsp | tsp | can | lb | pound | count | ml | pinch | pounds "
+    unit_regex = r" ounces | ounce | teaspoon | grams | g | teaspoons | cups | cup | tablespoon | tablespoons | tbsp | tsp | can | lb | pound | count | ml | pinch | pounds "
     
     for lis in recipe[i]['ingredients']:
         for key, val in lis.items():

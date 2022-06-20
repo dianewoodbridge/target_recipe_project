@@ -11,7 +11,8 @@ class Qty_normal_map:
                      'cup' : ['cups','cup'],
                      'oz' : ['ounces','oz', 'ounce'] , 
                      'lb' : ['pound','lb','lbs','lbs.','pounds'],
-                     'pinch' : ['pinch']
+                     'pinch' : ['pinch'],
+                     'grams' : ['g','grams']
                         }
         self.op_file_path = op_file_path
         self.data = data
@@ -38,7 +39,7 @@ class Qty_normal_map:
                          m = 30
                     elif normalized_unit == 'lb':
                          m = 480
-                    elif normalized_unit == 'pinch':
+                    elif normalized_unit in ['pinch','grams']:
                          m = 1
             if normalized_unit == '':
                 normalized_unit = unit
