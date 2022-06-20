@@ -36,7 +36,7 @@ Contains the DisplayProducts class that can display the most relevant products f
 *Import Requirements: preprocessor, matplotlib*
 
 7. **qty_mapping.py**
-Standardises the units (cup/tablespoon/teaspoon) used in recipe into a standard volume scale. Loads density information to calculate weight required from the volume. Finally, calculate the required amount of each ingredient.
+Standardises the units (cup/tablespoon/teaspoon) used in recipe into a standard volume scale. Loads density information to calculate weight required from the volume. Finally, calculate the required amount of each ingredient.  
 *Import Requirements: re, pandas, numpy*
 
 8. **evaluation.py**  
