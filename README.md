@@ -5,6 +5,7 @@ Descriptions are provided in a brief and concise manner. For more details, pleas
 
 1. **recipe_loading.py**
 Loads the recipe json file and tabularises the ingredients, required quantity, and the kitchen gadgets to be sued as an input in the further processes.
+*Import Requirements: requests, json, re, pandas, numpy*
 
 2. **pattern_search.py**  
 Contains the PatternMatcher class and associated functions for pattern matching. The functions associated include searching for products using exact string matching, stemmed string matching, searching for hypernyms, hyponyms, and food nouns.  
@@ -36,6 +37,7 @@ Contains the DisplayProducts class that can display the most relevant products f
 
 7. **qty_mapping.py**
 Standardises the units (cup/tablespoon/teaspoon) used in recipe into a standard volume scale. Loads density information to calculate weight required from the volume. Finally, calculate the required amount of each ingredient.
+*Import Requirements: re, pandas, numpy*
 
 8. **evaluation.py**  
 Contains functions for calculating metrics such as mean average precision (mAP), average precision (AP), precision, and recall.  
