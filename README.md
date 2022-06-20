@@ -4,7 +4,7 @@
 Descriptions are provided in a brief and concise manner. For more details, please refer to the code file comments. The API has the following classes and functionalities that are implemented in the associated python files: 
 
 1. **recipe_loading.py**
-Loads the recipe json file and tabularises the ingredients, required quantity, and the kitchen gadgets to be sued as an input in the further processes.
+<br>Loads the recipe json file and tabularises the ingredients, required quantity, and the kitchen gadgets to be sued as an input in the further processes.</br>
 *Import Requirements: requests, json, re, pandas, numpy*
 
 2. **pattern_search.py**  
@@ -36,7 +36,7 @@ Contains the DisplayProducts class that can display the most relevant products f
 *Import Requirements: preprocessor, matplotlib*
 
 7. **qty_mapping.py**
-Standardises the units (cup/tablespoon/teaspoon) used in recipe into a standard volume scale. Loads density information to calculate weight required from the volume. Finally, calculate the required amount of each ingredient.  
+<br>Standardises the units (cup/tablespoon/teaspoon) used in recipe into a standard volume scale. Loads density information to calculate weight required from the volume. Finally, calculate the required amount of each ingredient. </br>
 *Import Requirements: re, pandas, numpy*
 
 8. **evaluation.py**  
