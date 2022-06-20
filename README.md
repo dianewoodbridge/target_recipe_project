@@ -3,15 +3,15 @@
 ## API Functionalities & Requirements:
 Descriptions are provided in a brief and concise manner. For more details, please refer to the code file comments. The API has the following classes and functionalities that are implemented in the associated python files: 
 
-1. pattern_search.py  
+1. **pattern_search.py**  
 Contains the PatternMatcher class and associated functions for pattern matching. The functions associated include searching for products using exact string matching, stemmed string matching, searching for hypernyms, hyponyms, and food nouns.  
-Import Requirements: re, nltk, spacy
+*Import Requirements: re, nltk, spacy*
 
-2. preprocessor.py  
+2. **preprocessor.py**  
 Contains functions for preprocessing ingredient and product query text. Some of the preprocessing functionalities that could be applied include lowercasing, stemming, tokenization, removing punctuations, stop words, quantities, brand information. There is also a query expansion functionality that can expand an ingredient query with the hypernyms, hyopnyms, synonyms, and food nouns that are identified by the WordNet lexical database.  
-Import Requirements: pattern_search, pandas, numpy, string, ast, sklearn
+*Import Requirements: pattern_search, pandas, numpy, string, ast, sklearn*
 
-3. ranker.py  
+3. **ranker.py**    
 Contains the classes Ranker, TransformerRanker, CrossEncoderRanker, BM25Ranker, Classifier, RankerCombination, and RankerPipeline.
     - Ranker: Base Ranker class with common functionalities for TransformerRanker, CrossEncoderRanker and BM25Ranker classes. 
     - TransformerRanker:  This is the level 1 transformer ranker for quick candidate retrieval
@@ -21,19 +21,19 @@ Contains the classes Ranker, TransformerRanker, CrossEncoderRanker, BM25Ranker, 
     - RankerPipeline: Provides functionality to use different rankers (BM25Ranker, TransformerRanker, CrossEncoderRanker) in a sequential stagewise manner.
     - RankerCombination: Provides functionality to combine rankers using an array of weights corresponding to the rankers.    
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Import Requirements: preprocessor, rank_bm25, sentence_transformers, torch, joblib
+*&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Import Requirements: preprocessor, rank_bm25, sentence_transformers, torch, joblib*
 
-4. mapper.py  
+4. **mapper.py**    
 Contains the Mapper class that contains functions for mapping from a product_id to an image, title, or any other dataframe column. 
-Import Requirements: PIL, requests, io, numpy
+*Import Requirements: PIL, requests, io, numpy*
 
-5. display_products.py  
+5. **display_products.py**  
 Contains the DisplayProducts class that can display the most relevant products for a recipe or ingredient based on a ranker. It can also display products based on a product_id or list of product_ids. The products are displayed along with the relevance score, price and recommended quantity.  
-Import Requirements: preprocessor, matplotlib
+*Import Requirements: preprocessor, matplotlib*
 
-6. evaluation.py  
+6. **evaluation.py**  
 Contains functions for calculating metrics such as mean average precision (mAP), average precision (AP), precision, and recall.  
-Import Requirements: numpy
+*Import Requirements: numpy*
 
 ## Usage
 1. Select a recipe and process quantity information. We select a random recipe from the 1M+ Recipe dataset. 
@@ -59,7 +59,7 @@ Note: The code for encoding the products and generating embeddings is given in t
 pm = Mapper(product_df)
 dp = DisplayProducts(ranker=tr, mapper=pm)
 ```
-5. Rank products using the Ranker.
+5. Rank products using the TransformerRanker.
 ```
 ranked_products = tr.rank_products_recipe(recipe['ingredient'].values)
 ```
