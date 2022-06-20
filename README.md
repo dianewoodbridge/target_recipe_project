@@ -3,15 +3,18 @@
 ## API Functionalities & Requirements:
 Descriptions are provided in a brief and concise manner. For more details, please refer to the code file comments. The API has the following classes and functionalities that are implemented in the associated python files: 
 
-1. **pattern_search.py**  
+1. **recipe_loading.py**
+Loads the recipe json file and tabularises the ingredients, required quantity, and the kitchen gadgets to be sued as an input in the further processes.
+
+2. **pattern_search.py**  
 Contains the PatternMatcher class and associated functions for pattern matching. The functions associated include searching for products using exact string matching, stemmed string matching, searching for hypernyms, hyponyms, and food nouns.  
 *Import Requirements: re, nltk, spacy*
 
-2. **preprocessor.py**  
+3. **preprocessor.py**  
 Contains functions for preprocessing ingredient and product query text. Some of the preprocessing functionalities that could be applied include lowercasing, stemming, tokenization, removing punctuations, stop words, quantities, brand information. There is also a query expansion functionality that can expand an ingredient query with the hypernyms, hyopnyms, synonyms, and food nouns that are identified by the WordNet lexical database.  
 *Import Requirements: pattern_search, pandas, numpy, string, ast, sklearn*
 
-3. **ranker.py**    
+4. **ranker.py**    
 Contains the classes Ranker, TransformerRanker, CrossEncoderRanker, BM25Ranker, Classifier, RankerCombination, and RankerPipeline.
     - Ranker: Base Ranker class with common functionalities for TransformerRanker, CrossEncoderRanker and BM25Ranker classes. 
     - TransformerRanker:  This is the level 1 transformer ranker for quick candidate retrieval
@@ -23,15 +26,18 @@ Contains the classes Ranker, TransformerRanker, CrossEncoderRanker, BM25Ranker, 
 
 *&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Import Requirements: preprocessor, rank_bm25, sentence_transformers, torch, joblib*
 
-4. **mapper.py**    
+5. **mapper.py**    
 Contains the Mapper class that contains functions for mapping from a product_id to an image, title, or any other dataframe column. 
 *Import Requirements: PIL, requests, io, numpy*
 
-5. **display_products.py**  
+6. **display_products.py**  
 Contains the DisplayProducts class that can display the most relevant products for a recipe or ingredient based on a ranker. It can also display products based on a product_id or list of product_ids. The products are displayed along with the relevance score, price and recommended quantity.  
 *Import Requirements: preprocessor, matplotlib*
 
-6. **evaluation.py**  
+7. **qty_mapping.py**
+Standardises the units (cup/tablespoon/teaspoon) used in recipe into a standard volume scale. Loads density information to calculate weight required from the volume. Finally, calculate the required amount of each ingredient.
+
+8. **evaluation.py**  
 Contains functions for calculating metrics such as mean average precision (mAP), average precision (AP), precision, and recall.  
 *Import Requirements: numpy*
 
