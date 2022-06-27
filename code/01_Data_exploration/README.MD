@@ -2,7 +2,7 @@
 Descriptions for the files in this folder are provided in a brief and concise manner. For more details, please refer to the code file comments.
 
 1. **get_recipes.ipynb**
-<br>Getting and exploring the 1m recipe dataset.</br>
+<br>Getting and exploring recipe APIs.</br>
 *Import Requirements: requests, re, pandas, numpy*
 
 2. **recipe1M_top_ingredients.ipynb**  
