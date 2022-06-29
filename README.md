@@ -80,4 +80,8 @@ final_recommendations = qty.recommended_quantity(ranked_list)
 dp.display_products_df(final_recommendations)
 ``` 
 
+# References
+[Models](https://drive.google.com/drive/folders/1xxs9SYszFAwdvUJYHhnDKA848gvi0iBz)  
+[Data](https://drive.google.com/drive/folders/1QsAjf0nPDH2vY2ukow_v9xXe5UUTsJ7S)
+
 
