@@ -1,4 +1,4 @@
-# target_recipe_project
+# Bundle Recommender from Recipes to Shopping Cart
 
 ## API Functionalities & Requirements:
 Descriptions are provided in a brief and concise manner. For more details, please refer to the code file comments. The API has the following classes and functionalities that are implemented in the associated python files: 
